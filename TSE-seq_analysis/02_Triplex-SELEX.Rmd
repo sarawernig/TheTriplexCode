@@ -1,0 +1,328 @@
+---
+title: "Triplex-SELEX"
+author: "Sara Wernig-Zorc"
+date: "04/04/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, root.dir = 'C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/')
+```
+## Import libraries
+```{r libraries, include=FALSE, echo=FALSE, warning=FALSE}
+library(Biostrings)
+library(DiffLogo)
+library(seqLogo)
+library(seqinr)
+```
+
+## Extract "CCTCCT(.....................)"
+```{r Extract the 27nt only, eval=FALSE, include=FALSE}
+library(stringr)
+library(htmlwidgets)
+library(tidyr)
+library(htmltools)
+library(ampir)
+
+input_rep01 <- readDNAStringSet("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/FASTA/input-TFO-library-rep01_S1_L001_R1_001_trimmed.fasta")
+#input_rep01 <- readDNAStringSet("/Volumes/Sara_RAID_20TB/Sara_data_2018/Triplex-SELEX_project/raw_data/FASTA/test.fasta")
+pattern <- ("CCTCCT(.....................)")
+
+#html <- str_view_all(input_rep01,pattern)
+#save_html(html,"input_rep01_coreSeq6.html")
+
+input_rep01_CCT <- as.data.frame(input_rep01)
+input_rep01_CCT$name <- input_rep01@ranges@NAMES
+input_rep01_CCT$seq <- str_extract(input_rep01,pattern)
+input_rep01_CCT$x <- NULL
+rownames(input_rep01_CCT) <- NULL
+
+nrow(input_rep01_CCT)
+
+input_rep01_CCT <- input_rep01_CCT %>% drop_na()
+nrow(input_rep01_CCT)
+
+pattern_all <- ("CCTCCTTTTTTCTTTTTTTT(.......)")
+
+#html <- str_view_all(input_rep01,pattern_all)
+#save_html(html,"input_rep01_coreSeq20.html")
+
+
+df_to_faa(input_rep01_CCT, "C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/FASTA/input-TFO-library-rep01_S1_L001_R1_001_trimmed_filt.fasta")
+```
+
+
+## Import fasta files
+```{r import}
+data <- readDNAStringSet("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/FASTA/triplex-RNA-rep02+rep03_trimmed_filt20.fasta")
+
+pfm <- consensusMatrix(data,as.prob=T)
+pfm <- pfm[-5:-18,] #PFM: Frequency of each base
+pwm.triplex <- makePWM(pfm, alphabet="DNA")  #PWM: Probability of each base
+
+ctrl <- readDNAStringSet("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project//FASTA/input-TFO-library-rep01+rep02_trimmed_filt20.fasta")
+
+pfm.ctrl <- consensusMatrix(ctrl,as.prob=T)
+pfm.ctrl <- pfm.ctrl[-5:-18,] 
+pwm.ctrl <- makePWM(pfm.ctrl, alphabet="DNA")  #In theory alphabet="RNA" should work
+```
+
+## PWM and enrichment over input library
+```{r diff}
+seqLogo::seqLogo(pwm = pfm.ctrl, ic.scale=FALSE)
+seqLogo::seqLogo(pwm = pfm,ic.scale=FALSE)
+
+nr_triplex = length(data)
+nr_ctrl = length(ctrl)
+
+diffLogoObj = createDiffLogoObject(pwm1 = pwm.triplex, pwm2 = pwm.ctrl)
+diffLogoObj = enrichDiffLogoObjectWithPvalues(diffLogoObj, nr_triplex, nr_ctrl,numberOfPermutations = 100)
+
+pdf("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/results/all_triplexes.pdf",height = 5, width = 8)
+diffLogo(diffLogoObj)
+dev.off()
+
+PWMs <- list(pwm.triplex, pwm.ctrl)
+nr_all <- list(nr_triplex, nr_ctrl)
+#diffLogoTable(PWMs = PWMs, sampleSizes = nr_all)
+```
+## Replicate analysis
+```{r import replicates}
+t1 <- readDNAStringSet("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/FASTA/triplex-RNA-rep01_S3_L001_R1_001_trimmed_filt20.fasta")
+
+pfm.t1 <- consensusMatrix(t1,as.prob=T)
+pfm.t1 <- pfm.t1[-5:-18,] 
+#pwm.t1 <- PWM(consensusMatrix(pfm.t1))
+
+t2 <- readDNAStringSet("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/FASTA/triplex-RNA-rep02_S4_L001_R1_001_trimmed_filt20.fasta")
+
+pfm.t2 <- consensusMatrix(t2,as.prob=T)
+pfm.t2 <- pfm.t2[-5:-18,] 
+#pwm.t2 <- PWM(consensusMatrix(pfm.t2))
+
+t3 <- readDNAStringSet("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/FASTA/triplex-RNA-rep03_S5_L001_R1_001_trimmed_filt20.fasta")
+
+pfm.t3 <- consensusMatrix(t3,as.prob=T)
+pfm.t3 <- pfm.t3[-5:-18,] 
+#pwm.t3 <- PWM(consensusMatrix(pfm.t3))
+
+nr_t1 = length(t1)
+nr_t2 = length(t2)
+nr_t3 = length(t3)
+
+c1 <- readDNAStringSet("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/FASTA/input-TFO-library-rep01_S1_L001_R1_001_trimmed_filt20.fasta")
+
+pfm.c1 <- consensusMatrix(c1,as.prob=T)
+pfm.c1 <- pfm.c1[-5:-18,] 
+#pwm.c1 <- PWM(consensusMatrix(pfm.c1))
+
+c2 <- readDNAStringSet("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/FASTA/input-TFO-library-rep02_S2_L001_R1_001_trimmed_filt20.fasta")
+
+pfm.c2 <- consensusMatrix(c2,as.prob=T)
+pfm.c2 <- pfm.c2[-5:-18,] 
+#pwm.c2 <- PWM(consensusMatrix(pfm.c2))
+
+nr_c1 = length(c1)
+nr_c2 = length(c2)
+
+```
+
+```{r replicate analysis}
+seqLogo::seqLogo(pwm = pfm.t1, ic.scale=FALSE)
+seqLogo::seqLogo(pwm = pfm.t2,ic.scale=FALSE)
+seqLogo::seqLogo(pwm = pfm.t3, ic.scale=FALSE)
+
+seqLogo::seqLogo(pwm = pfm.c1,ic.scale=FALSE)
+seqLogo::seqLogo(pwm = pfm.c2,ic.scale=FALSE)
+
+pwm.t1 <- makePWM(pfm.t1, alphabet="DNA")
+pwm.t2 <- makePWM(pfm.t2, alphabet="DNA")
+pwm.t3 <- makePWM(pfm.t3, alphabet="DNA")
+
+pwm.c1 <- makePWM(pfm.c1, alphabet="DNA")
+pwm.c2 <- makePWM(pfm.c2, alphabet="DNA")
+
+#Triplex rep2 vs. control rep1
+t2.vs.c1 = createDiffLogoObject(pwm1 = pwm.t2, pwm2 = pwm.c1)
+t2.vs.c1 = enrichDiffLogoObjectWithPvalues(t2.vs.c1, nr_t2, nr_c1)#, numberOfPermutations = 100)
+
+pdf("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/results/all_triplexes_rep2_1.pdf",height = 5, width = 8)
+diffLogo(t2.vs.c1)
+dev.off()
+
+#Triplex rep2 vs. control rep2
+t2.vs.c2 = createDiffLogoObject(pwm1 = pwm.t2, pwm2 = pwm.c2)
+t2.vs.c2 = enrichDiffLogoObjectWithPvalues(t2.vs.c2, nr_t2, nr_c2)#, numberOfPermutations = 100)
+
+pdf("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/results/all_triplexes_rep2_2.pdf",height = 5, width = 8)
+diffLogo(t2.vs.c2)
+dev.off()
+
+#Triplex rep3 vs. control rep1
+t3.vs.c1 = createDiffLogoObject(pwm1 = pwm.t3, pwm2 = pwm.c1)
+t3.vs.c1 = enrichDiffLogoObjectWithPvalues(t3.vs.c1, nr_t3, nr_c1)#, numberOfPermutations = 100)
+
+pdf("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/results/all_triplexes_rep3_1.pdf",height = 5, width = 8)
+diffLogo(t3.vs.c1)
+dev.off()
+
+#Triplex rep3 vs. control rep2
+t3.vs.c2 = createDiffLogoObject(pwm1 = pwm.t3, pwm2 = pwm.c2)
+t3.vs.c2 = enrichDiffLogoObjectWithPvalues(t3.vs.c2, nr_t3, nr_c2)#, numberOfPermutations = 100)
+
+pdf("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/results/all_triplexes_rep3_2.pdf",height = 5, width = 8)
+diffLogo(t3.vs.c2)
+dev.off()
+
+PWMs <- list(pwm.t1, pwm.t2, pwm.t3, pwm.c1, pwm.c2)
+nr_all <- list(nr_t1, nr_t2, nr_t3, nr_c1, nr_c2)
+#diffLogoTable(PWMs = PWMs, sampleSizes = nr_all)
+```
+## Bias in input library: In silico library vs. input
+```{r in silico input, eval=FALSE, include=FALSE}
+set.seed(1000) 
+Num_Sequences = 100000
+random_length = 7
+
+file_out = paste("Random_DNA_seq_Nr.", Num_Sequences, ".fasta", sep="")
+file.create(file_out)
+
+DNA = c ("A", "T", "C", "G") #, "N", "a", "t", "c", "g", "n")
+DNA_probabilities = c(0.25, 0.25, 0.25, 0.25) #, 0.05, 0.01, 0.01, 0.01, 0.01, 0.01)
+
+for (i in 1:Num_Sequences) {
+    length = random_length
+    line_header = paste("Random_seq_", i, sep="")
+    DNA_sequence = paste(sample(DNA, 
+                                random_length, 
+                                replace=TRUE, 
+                                prob=DNA_probabilities), 
+                         collapse = "")
+    Random_DNA = paste("CCTCCTTTTTTCTTTTTTTT", DNA_sequence, sep="")
+    write.fasta(Random_DNA, 
+                line_header, 
+                file.out=paste("Random_DNA_seq_Nr.", Num_Sequences, ".fasta", sep=""), 
+                open = "a", 
+                nbchar = 60, 
+                as.string = TRUE)
+}
+```
+
+```{r random input vs. real input}
+in.silico.ctrl <- readDNAStringSet("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/scripts/Random_DNA_seq_Nr.40000.fasta")
+
+pfm.in.silico.ctrl  <- consensusMatrix(in.silico.ctrl ,as.prob=T)
+pfm.in.silico.ctrl  <- pfm.in.silico.ctrl [-5:-18,] 
+
+seqLogo::seqLogo(pwm = pfm.in.silico.ctrl,ic.scale=FALSE)
+pwm.in.silico.ctrl <- makePWM(pfm.in.silico.ctrl, alphabet="DNA")
+
+nr_in.silico.ctrl = length(in.silico.ctrl)
+
+#Triplex merged vs. in silico control
+dffObject = createDiffLogoObject(pwm1 = pwm.ctrl, pwm2 = pwm.in.silico.ctrl)
+dffObject = enrichDiffLogoObjectWithPvalues(dffObject, nr_ctrl, nr_in.silico.ctrl) #numberOfPermutations = 100
+diffLogo(dffObject)
+
+```
+
+
+
+# Read quantification with SALMON
+```{bash Read quantification, eval=FALSE, include=FALSE}
+#Create in silico transcriptome
+salmon index -i RNA_TFO_library -k 7 -p 20 -t $project_folder/processed_data/in_silico_library/Random_DNA_seq_Nr.1e+05.fasta
+
+#Quantify reads Control
+salmon quant -i RNA_TFO_library/ -l SF -r $project_folder/raw_data/FASTA/input-TFO-library-rep01+rep02_trimmed_filt20.fasta -o $project_folder/processed_data/readQuant/ctrl/ --noFragLengthDist --noSingleFragProb  --noEffectiveLengthCorrection --noLengthCorrection --maxOccsPerHit 100000 --allowDovetail --threads 10
+
+#Quantify reads Triplex
+salmon quant -i RNA_TFO_library/ -l SF -r $project_folder/raw_data/FASTA/triplex-RNA-rep02+rep03_trimmed_filt20.fasta -o $project_folder/processed_data/readQuant/triplex/ --noFragLengthDist --noSingleFragProb  --noEffectiveLengthCorrection --noLengthCorrection --maxOccsPerHit 100000 --allowDovetail --threads 10
+```
+
+## Triplex enrichment over input
+```{r triplex enrichment, eval=FALSE, include=FALSE}
+library(tximportData)
+dir <- system.file("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/results/SALMON/", package = "tximportData")
+list.files(dir)
+library(tximport)
+files <- file.path("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/results", type="SALMON", "SALMON_quant.csv")
+#names(files) <- paste0("sample", 1:2)
+txi.salmon <- tximport(files, type = "salmon")
+head(txi.salmon$counts)
+
+library(edgeR)
+cts <- txi$counts
+normMat <- txi$length
+
+# Obtaining per-observation scaling factors for length, adjusted to avoid
+# changing the magnitude of the counts.
+normMat <- normMat/exp(rowMeans(log(normMat)))
+normCts <- cts/normMat
+
+# Computing effective library sizes from scaled counts, to account for
+# composition biases between samples.
+library(edgeR)
+eff.lib <- calcNormFactors(normCts) * colSums(normCts)
+
+# Combining effective library sizes with the length factors, and calculating
+# offsets for a log-link GLM.
+normMat <- sweep(normMat, 2, eff.lib, "*")
+normMat <- log(normMat)
+
+# Creating a DGEList object for use in edgeR.
+y <- DGEList(cts)
+y <- scaleOffset(y, normMat)
+# filtering
+keep <- filterByExpr(y)
+y <- y[keep, ]
+# y is now ready for estimate dispersion
+se <- SummarizedExperiment(assays = list(counts = y$counts, offset = y$offset))
+se$totals <- y$samples$lib.size
+
+library(csaw)
+cpms <- calculateCPM(se, use.offsets = TRUE, log = FALSE)
+
+```
+
+
+
+## SALMON: logFC(Triplex/Input) > 1.5
+```{r top enriched - SALMON}
+top <- readDNAStringSet("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/results/SALMON/top_enriched_triplexes.fasta")
+
+pfm.top <- consensusMatrix(top,as.prob=T)
+pfm.top <- pfm.top[-5:-18,] 
+
+seqLogo::seqLogo(pwm = pfm.top,ic.scale=FALSE)
+
+pwm.top <- makePWM(pfm.top, alphabet="DNA")
+
+
+nr_top = length(top)
+nr_ctrl = length(ctrl)
+
+diffLogoObj = createDiffLogoObject(pwm1 = pwm.top, pwm2 = pwm.ctrl)
+diffLogoObj = enrichDiffLogoObjectWithPvalues(diffLogoObj, nr_top, nr_ctrl)#, numberOfPermutations = 100)
+diffLogo(diffLogoObj)
+```
+
+## SALMON: logFC(Triplex/Input) > 1
+```{r enriched - SALMON}
+top <- readDNAStringSet("C:/Users/saraw/Documents/Projects/Triplex_code/Triplex-SELEX_project/results/SALMON/enriched_triplexes.fasta")
+
+pfm.top <- consensusMatrix(top,as.prob=T)
+pfm.top <- pfm.top[-5:-18,] 
+
+seqLogo::seqLogo(pwm = pfm.top,ic.scale=FALSE)
+
+pwm.top <- makePWM(pfm.top, alphabet="DNA")
+
+
+nr_top = length(top)
+nr_ctrl = length(ctrl)
+
+diffLogoObj = createDiffLogoObject(pwm1 = pwm.top, pwm2 = pwm.ctrl)
+diffLogoObj = enrichDiffLogoObjectWithPvalues(diffLogoObj, nr_top, nr_ctrl)#, numberOfPermutations = 100)
+diffLogo(diffLogoObj)
+```

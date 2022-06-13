@@ -1,0 +1,512 @@
+---
+title: "The Triplex Code"
+author: "Sara Wernig-Zorc"
+date: "3/21/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, root.dir = 'C:/Users/saraw/Documents/Projects/Triplex_code/MST')
+```
+
+```{r load lib, include=FALSE}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(cowplot)
+library(formattable)
+library(data.table)
+library(htmltools)
+library(webshot)    
+```
+
+```{r table design}
+customGreen = "#71CA97"
+customRed = "#ff7f7f"
+customYellow ="#FDD692"
+
+L_format <- formatter("span", 
+                           style = ~ style(color = "black",font.weight = "bold"))
+
+G_format <- formatter("span", 
+                           style = ~ style(color = "black",font.weight = "bold"),
+                      x ~ style(digits(x,1)))
+
+SD_format <- formatter("span", 
+                           style = ~ style(color = "black"),
+                       x ~ style(digits(x,1)))
+
+mean_format <- formatter("span",
+                         style = x ~ style(font.weight = "bold",
+                                           color = ifelse(x < 0.000001, customGreen, 
+                                                          ifelse(x >= 0.000001 & x < 0.00005, 
+                                                                 customYellow,
+                                                          ifelse(x >= 0.00005, 
+                                                                 customRed, "black")))),
+                         x ~ style(digits(x,2)))
+
+mean_format_2 <- formatter("span",
+                         style = x ~ style(font.weight = "bold",
+                                           color = ifelse(x < 1000, customGreen, 
+                                                          ifelse(x >= 1000 & x < 50000, 
+                                                                 customYellow,
+                                                          ifelse(x >= 50000, 
+                                                                 customRed, "black")))),
+                         x ~ style(digits(x,1)))
+
+export_formattable <- function(f, file, width = "100%", height = NULL, 
+                               background = "white", delay = 0.2)
+    {
+      w <- as.htmlwidget(f, width = width, height = height)
+      path <- html_print(w, background = background, viewer = NULL)
+      url <- paste0("file:///", gsub("\\\\", "/", normalizePath(path)))
+      webshot(url,
+              file = file,
+              selector = ".formattable_widget",
+              delay = delay)
+}
+
+
+```
+
+
+# Mixed motif
+
+```{r M_G_RNA}
+M_G_RNA <- read_excel("~/Projects/Triplex_code/M_G_RNA.xlsx")
+MGR_table <- 
+  M_G_RNA %>%
+  group_by(`G%`) %>%
+  summarise("Kd [nM]" = mean(as.numeric(`Kd[M]`)*1000000000), "SD [nM]" = sd(as.numeric(`Kd[M]`)*1000000000), "Replicates" = n())
+
+M_G_RNA_table <- formattable(MGR_table, 
+            align =c("c","c","c","c"), 
+           list(`Length` = L_format, `Kd [nM]` = mean_format_2,`SD [nM]` =  SD_format ))
+M_G_RNA_table
+export_formattable(M_G_RNA_table,"M_G_RNA_table.png",width = "30%")
+
+MGR <- ggplot(M_G_RNA, aes(`G%`,`Kd[M]`)) + geom_smooth(span = 0.6,aes(color=..y..)) +  
+  theme_classic() + scale_y_continuous(trans = 'log2',labels = scales::scientific) + 
+  ggtitle("M RNA TFO - G%") +  ylab("Kd [M]") + 
+  theme(axis.text=element_text(color="black")) + theme(legend.position="none") +
+  scale_colour_gradient2(low = customGreen, mid = customRed , high = customRed, 
+                         midpoint=0.00005) + theme(legend.position="none") +
+  geom_hline(yintercept=0.00005, linetype="dashed", color = customRed) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face="bold"))
+MGR
+ggsave("M_G_RNA.png",plot=MGR)
+
+```
+
+```{r M_G_DNA}
+M_G_DNA <- read_excel("~/Projects/Triplex_code/M_G_DNA.xlsx")
+MGD_table <- 
+  M_G_DNA %>%
+  group_by(`G%`) %>%
+  summarise("Kd [nM]" = mean(as.numeric(`Kd[M]`)*1000000000), "SD [nM]" = sd(as.numeric(`Kd[M]`)*1000000000), "Replicates" = n())
+
+M_G_DNA_table <- formattable(MGD_table, 
+            align =c("c","c","c","c"), 
+           list(`Length` = L_format, `Kd [nM]` = mean_format_2,`SD [nM]` =  SD_format ))
+M_G_DNA_table
+export_formattable(M_G_DNA_table,"M_G_DNA_table.png",width = "30%")
+
+
+MGD <- ggplot(M_G_DNA, aes(`G%`,`Kd[M]`))  + geom_smooth(span = 0.6,aes(color=..y..)) +  
+  theme_classic() + scale_y_continuous(trans = 'log2',labels = scales::scientific) + 
+  ggtitle("M DNA TFO - G%") +  ylab("Kd [M]") + 
+  theme(axis.text=element_text(color="black")) +
+  scale_colour_gradient2(low = customGreen, mid = customRed , high = customRed, 
+                         midpoint=0.00005) +  theme(legend.position="none") +
+  geom_hline(yintercept=0.00005, linetype="dashed", color = customRed) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face="bold"))
+MGD
+ggsave("M_G_DNA.png",plot=MGD)
+```
+
+
+```{r M_Length_RNA}
+M_Length_RNA <- read_excel("~/Projects/Triplex_code/M_Length_RNA.xlsx")
+MLR_table <- 
+  M_Length_RNA %>%
+  group_by(`Length`) %>%
+  summarise("Kd [nM]" = mean(as.numeric(`Kd[M]`)*1000000000), "SD [nM]" = sd(as.numeric(`Kd[M]`)*1000000000), "Replicates" = n())
+
+M_Length_RNA_table <- formattable(MLR_table, 
+            align =c("c","c","c","c"), 
+            list(`Length` = L_format, `Kd [nM]` = mean_format_2,`SD [nM]` =  SD_format ))
+M_Length_RNA_table
+export_formattable(M_Length_RNA_table,"M_Length_RNA_table.png",width = "30%")
+
+MLR <- ggplot(M_Length_RNA, aes(`Length`,`Kd[M]`))  + geom_smooth(span = 0.6,aes(color=..y..)) +  
+  theme_classic() + scale_y_continuous(trans = 'log2',labels = scales::scientific) + 
+  ggtitle("M RNA TFO - Length") +  ylab("Kd [M]") + 
+  theme(axis.text=element_text(color="black")) + theme(legend.position="none") +
+  scale_colour_gradient2(low = customGreen, mid = customRed , high = customRed, 
+                         midpoint=0.00005) + theme(legend.position="none") +
+  geom_hline(yintercept=0.00005, linetype="dashed", color = customRed) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face="bold"))
+MLR
+ggsave("M_Length_RNA.png",plot=MLR)
+```
+
+```{r M_Length_DNA}
+M_Length_DNA <- read_excel("~/Projects/Triplex_code/M_Length_DNA.xlsx")
+MLD_table <- 
+  M_Length_DNA %>%
+  group_by(`Length`) %>%
+  summarise("Kd [nM]" = mean(as.numeric(`Kd[M]`)*1000000000), "SD [nM]" = sd(as.numeric(`Kd[M]`)*1000000000), "Replicates" = n())
+
+M_Length_DNA_table <- formattable(MLD_table, 
+            align =c("c","c","c","c"), 
+            list(`Length` = L_format, `Kd [nM]` = mean_format_2,`SD [nM]` =  SD_format ))
+M_Length_DNA_table
+export_formattable(M_Length_DNA_table,"M_Length_DNA_table.png",width = "30%")
+
+MLD <- ggplot(M_Length_DNA, aes(`Length`,`Kd[M]`)) + geom_smooth(span = 0.6,aes(color=..y..)) +  
+  theme_classic() + scale_y_continuous(trans = 'log2',labels = scales::scientific) + 
+  ggtitle("M DNA TFO - Length") +  ylab("Kd [M]") + 
+  theme(axis.text=element_text(color="black")) + theme(legend.position="none") +
+  scale_colour_gradient2(low = customGreen, mid = customRed , high = customRed, 
+                         midpoint=0.00005) + theme(legend.position="none") +
+  geom_hline(yintercept=0.00005, linetype="dashed", color = customRed) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face="bold"))
+MLD
+ggsave("M_Length_DNA.png",plot=MLD)
+```
+
+
+# Purine motif
+
+```{r R_G_RNA}
+R_G_RNA <- read_excel("~/Projects/Triplex_code/R_G_RNA.xlsx")
+RGR_table <- 
+  R_G_RNA %>%
+  group_by(`G%`) %>%
+  summarise("Kd [nM]" = mean(as.numeric(`Kd[M]`)*1000000000), "SD [nM]" = sd(as.numeric(`Kd[M]`)*1000000000), "Replicates" = n())
+
+R_G_RNA_table <- formattable(RGR_table, 
+            align =c("c","c","c","c"), 
+           list(`Length` = L_format, `Kd [nM]` = mean_format_2,`SD [nM]` =  SD_format ))
+R_G_RNA_table
+export_formattable(R_G_RNA_table,"R_G_RNA_table.png",width = "30%")
+
+RGR <- ggplot(R_G_RNA, aes(`G%`,as.numeric(`Kd[M]`))) + geom_smooth(span = 0.6,aes(color=..y..)) +  
+  theme_classic() + scale_y_continuous(trans = 'log2',labels = scales::scientific) + 
+  ggtitle("R RNA TFO - G%") +  ylab("Kd [M]") + 
+  theme(axis.text=element_text(color="black")) + theme(legend.position="none") +
+  scale_colour_gradient2(low = customGreen, mid = customRed , high = customRed, 
+                         midpoint=0.00005) + theme(legend.position="none") +
+  geom_hline(yintercept=0.00005, linetype="dashed", color = customRed) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face="bold"))
+RGR
+ggsave("R_G_RNA.png",plot=RGR)
+```
+
+```{r R_G_DNA}
+R_G_DNA <- read_excel("~/Projects/Triplex_code/R_G_DNA.xlsx")
+RGD_table <- 
+  R_G_DNA %>%
+  group_by(`G%`) %>%
+  summarise("Kd [nM]" = mean(as.numeric(`Kd[M]`)*1000000000), "SD [nM]" = sd(as.numeric(`Kd[M]`)*1000000000), "Replicates" = n())
+
+R_G_DNA_table <- formattable(RGD_table, 
+            align =c("c","c","c","c"), 
+           list(`Length` = L_format, `Kd [nM]` = mean_format_2,`SD [nM]` =  SD_format ))
+R_G_DNA_table
+export_formattable(R_G_DNA_table,"R_G_DNA_table.png",width = "30%")
+
+
+RGD <- ggplot(R_G_DNA, aes(`G%`,as.numeric(`Kd[M]`)))  + geom_smooth(span = 0.6,aes(color=..y..)) +  
+  theme_classic() + scale_y_continuous(trans = 'log2',labels = scales::scientific) + 
+  ggtitle("R DNA TFO - G%") +  ylab("Kd [M]") + 
+  theme(axis.text=element_text(color="black")) + theme(legend.position="none") +
+  scale_colour_gradient2(low = customGreen, mid = customRed , high = customRed, 
+                         midpoint=0.00005) + theme(legend.position="none") +
+  geom_hline(yintercept=0.00005, linetype="dashed", color = customRed) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face="bold"))
+RGD
+ggsave("R_G_DNA.png",plot=RGR)
+```
+
+```{r R_Length_RNA}
+R_Length_RNA <- read_excel("~/Projects/Triplex_code/R_Length_RNA.xlsx")
+RLR_table <- 
+  R_Length_RNA %>%
+  group_by(`Length`) %>%
+  summarise("Kd [nM]" = mean(as.numeric(`Kd[M]`)*1000000000), "SD [nM]" = sd(as.numeric(`Kd[M]`)*1000000000), "Replicates" = n())
+
+R_Length_RNA_table <- formattable(RLR_table, 
+            align =c("c","c","c","c"), 
+            list(`Length` = L_format, `Kd [nM]` = mean_format_2,`SD [nM]` =  SD_format ))
+R_Length_RNA_table
+export_formattable(R_Length_RNA_table,"R_Length_RNA_table.png",width = "30%")
+
+RLR <- ggplot(R_Length_RNA, aes(`Length`,`Kd[M]`))  + geom_smooth(span = 0.6,aes(color=..y..)) +  
+  theme_classic() + scale_y_continuous(trans = 'log2',labels = scales::scientific) + 
+  ggtitle("R RNA TFO - Length") +  ylab("Kd [M]") + 
+  theme(axis.text=element_text(color="black")) + theme(legend.position="none") +
+  scale_colour_gradient2(low = customGreen, mid = customRed , high = customRed, 
+                         midpoint=0.00005) + theme(legend.position="none") +
+  geom_hline(yintercept=0.00005, linetype="dashed", color = customRed) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face="bold"))
+RLR
+ggsave("R_Length_RNA.png",plot=RLR)
+```
+
+```{r R_Length_DNA}
+R_Length_DNA <- read_excel("~/Projects/Triplex_code/R_Length_DNA.xlsx")
+RLD_table <- 
+  R_Length_DNA %>%
+  group_by(`Length`) %>%
+  summarise("Kd [nM]" = mean(as.numeric(`Kd[M]`)*1000000000), "SD [nM]" = sd(as.numeric(`Kd[M]`)*1000000000), "Replicates" = n())
+
+R_Length_DNA_table <- formattable(RLD_table, 
+            align =c("c","c","c","c"), 
+            list(`Length` = L_format, `Kd [nM]` = mean_format_2,`SD [nM]` =  SD_format ))
+R_Length_DNA_table
+export_formattable(R_Length_DNA_table,"R_Length_DNA_table.png",width = "30%")
+
+RLD <- ggplot(R_Length_DNA, aes(`Length`,as.numeric(`Kd[M]`)))  + geom_smooth(span = 0.6,aes(color=..y..)) +  
+  theme_classic() + scale_y_continuous(trans = 'log2',labels = scales::scientific) + 
+  ggtitle("R DNA TFO - Length") +  ylab("Kd [M]") + 
+  theme(axis.text=element_text(color="black")) +
+  scale_colour_gradient2(low = customGreen, mid = customRed , high = customRed, 
+                         midpoint=0.00005) + theme(legend.position="none") +
+  geom_hline(yintercept=0.00005, linetype="dashed", color = customRed) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face="bold"))
+RLD
+ggsave("R_Length_DNA.png",plot=RLD)
+```
+
+# Pyrimidine motif
+
+```{r Y_G_RNA}
+Y_G_RNA <- read_excel("~/Projects/Triplex_code/Y_G_RNA.xlsx")
+YGR_table <- 
+  Y_G_RNA %>%
+  group_by(`G%`) %>%
+  summarise("Kd [nM]" = mean(`Kd[M]`*1000000000), "SD [nM]" = sd(`Kd[M]`*1000000000), "Replicates" = n())
+
+Y_G_RNA_table <- formattable(YGR_table, 
+            align =c("c","c","c","c"), 
+           list(`Length` = L_format, `Kd [nM]` = mean_format_2,`SD [nM]` =  SD_format ))
+Y_G_RNA_table
+export_formattable(Y_G_RNA_table,"Y_G_RNA_table.png",width = "30%")
+
+YGR <- ggplot(Y_G_RNA, aes(`G%`,`Kd[M]`))  + geom_smooth(span = 0.6,aes(color=..y..)) +  
+  theme_classic() + scale_y_continuous(trans = 'log2',labels = scales::scientific) + 
+  ggtitle("Y RNA TFO - G%") +  ylab("Kd [M]") + 
+  theme(axis.text=element_text(color="black")) + theme(legend.position="none") +
+  scale_colour_gradient2(low = customGreen, mid = customRed , high = customRed, 
+                         midpoint=0.00005) + theme(legend.position="none") +
+  geom_hline(yintercept=0.00005, linetype="dashed", color = customRed) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face="bold"))
+YGR
+ggsave("Y_G_RNA.png",plot=YGR)
+```
+
+```{r Y_G_DNA}
+Y_G_DNA <- read_excel("~/Projects/Triplex_code/Y_G_DNA.xlsx")
+YGD_table <- 
+  Y_G_DNA %>%
+  group_by(`G%`) %>%
+  summarise("Kd [nM]" = mean(`Kd[M]`*1000000000), "SD [nM]" = sd(`Kd[M]`*1000000000), "Replicates" = n())
+
+Y_G_DNA_table <- formattable(YGD_table, 
+            align =c("c","c","c","c"), 
+           list(`Length` = L_format, `Kd [nM]` = mean_format_2,`SD [nM]` =  SD_format ))
+Y_G_DNA_table
+export_formattable(Y_G_DNA_table,"Y_G_DNA_table.png",width = "30%")
+
+YGD <- ggplot(Y_G_DNA, aes(`G%`,`Kd[M]`)) + geom_smooth(span = 0.6,aes(color=..y..)) +  
+  theme_classic() + scale_y_continuous(trans = 'log2',labels = scales::scientific) + 
+  ggtitle("Y DNA TFO - G%") +  ylab("Kd [M]") + 
+  theme(axis.text=element_text(color="black")) + theme(legend.position="none") +
+  scale_colour_gradient2(low = customGreen, mid = customRed , high = customRed, 
+                         midpoint=0.00005) + theme(legend.position="none") +
+  geom_hline(yintercept=0.00005, linetype="dashed", color = customRed) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face="bold"))
+YGD
+ggsave("Y_G_DNA.png",plot=YGD)
+```
+
+```{r Y_Length_RNA}
+Y_Length_RNA <- read_excel("~/Projects/Triplex_code/Y_Length_RNA.xlsx")
+YLR_table <- 
+  Y_Length_RNA %>%
+  group_by(`Length`) %>%
+  summarise("Kd [nM]" = mean(`Kd[M]`*1000000000), "SD [nM]" = sd(`Kd[M]`*1000000000), "Replicates" = n())
+
+Y_Length_RNA_table <- formattable(YLR_table, 
+            align =c("c","c","c","c"), 
+            list(`Length` = L_format, `Kd [nM]` = mean_format_2,`SD [nM]` =  SD_format ))
+Y_Length_RNA_table
+export_formattable(Y_Length_RNA_table,"Y_Length_RNA_table.png",width = "30%")
+
+YLR <- ggplot(Y_Length_RNA, aes(`Length`,`Kd[M]`))  + geom_smooth(span = 0.6,aes(color=..y..)) +  
+  theme_classic() + scale_y_continuous(trans = 'log2',labels = scales::scientific) + 
+  ggtitle("Y RNA TFO - Length") +  ylab("Kd [M]") + 
+  theme(axis.text=element_text(color="black")) + theme(legend.position="none") +
+  scale_colour_gradient2(low = customGreen, mid = customRed , high = customRed, 
+                         midpoint=0.00005) + theme(legend.position="none") +
+  geom_hline(yintercept=0.00005, linetype="dashed", color = customRed) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face="bold"))
+YLR
+ggsave("Y_Length_RNA.png",plot=YLR)
+```
+
+```{r Y_Length_DNA}
+Y_Length_DNA <- read_excel("~/Projects/Triplex_code/Y_Length_DNA.xlsx")
+YLD_table <- 
+  Y_Length_DNA %>%
+  group_by(`Length`) %>%
+  summarise("Kd [nM]" = mean(`Kd[M]`*1000000000), "SD [nM]" = sd(`Kd[M]`*1000000000), "Replicates" = n())
+
+Y_Length_DNA_table <- formattable(YLD_table, 
+            align =c("c","c","c","c"), 
+            list(`Length` = L_format, `Kd [nM]` = mean_format_2,`SD [nM]` =  SD_format ))
+Y_Length_DNA_table
+export_formattable(Y_Length_DNA_table,"Y_Length_DNA_table.png",width = "30%")
+
+YLD <- ggplot(Y_Length_DNA, aes(`Length`,`Kd[M]`))  + geom_smooth(span = 0.6,aes(color=..y..)) +  
+  theme_classic() + scale_y_continuous(trans = 'log2',labels = scales::scientific) + 
+  ggtitle("Y DNA TFO - Length") +  ylab("Kd [M]") + 
+  theme(axis.text=element_text(color="black")) + theme(legend.position="none") +
+  scale_colour_gradient2(low = customGreen, mid = customRed , high = customRed, 
+                         midpoint=0.00005) + theme(legend.position="none") +
+  geom_hline(yintercept=0.00005, linetype="dashed", color = customRed) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face="bold"))
+YLD
+ggsave("Y_Length_DNA.png",plot=YLD)
+```
+
+# Summary of the triplex code
+
+```{r Summary}
+M <- plot_grid(MGD,MGR,MLD,MLR, labels = c("A","B","A","B"), label_size = 14)
+M
+
+save_plot("Mixed_motif.png",M)
+save_plot("Mixed_motif.pdf",M)
+
+R <- plot_grid(RGD,RGR,RLD,RLR, labels = c("A","B","A","B"), label_size = 14)
+R
+save_plot("Purine_motif.png", R)
+save_plot("Purine_motif.pdf", R)
+
+Y <- plot_grid(YGD,YGR,YLD,YLR,  labels = c("A","B","A","B"), label_size = 14)
+Y
+save_plot("Pyrimidine_motif.png", Y)
+save_plot("Pyrimidine_motif.pdf", Y)
+
+```
+
+# Published triplexes
+
+```{r Published triplexes}
+Published_triplexes <- read_excel("~/Projects/Triplex_code/Published_triplexes.xlsx", 
+                                  col_types = c("text", "numeric", "text", 
+                                                "numeric", "numeric", "text", 
+                                                "text", "text", "text"))
+PT_table <- 
+  Published_triplexes %>%
+  group_by(`triplex name`) %>%
+  summarise("Kd [nM]" = mean(`Kd`*1000000000), "SD [nM]" = sd(`Kd`*1000000000), "Replicates" = n()) 
+
+#uniq <- Published_triplexes %>%
+#  select(`triplex name`,Motif, Length,`G%`,TrTS_R, TrTS_Y, TFO, Publication) %>%
+#  distinct() 
+
+uniq <- Published_triplexes %>%
+  select(`triplex name`,Motif, Length,`G%`, Publication) %>%
+  distinct() 
+
+PT_table_full <- 
+  PT_table %>%
+  inner_join(uniq, by = c("triplex name" = "triplex name"))
+
+Published_table <- formattable(PT_table_full, 
+            align =c("c","c","c","c","c","c","c","c"), 
+            list(`triplex name` = L_format, `Kd [nM]` = mean_format_2,
+                 `SD [nM]` =  SD_format, `G%` = SD_format))
+Published_table
+export_formattable(Published_table,"Published_triplexes_table.png",width = "100%")
+```
+
+# Mismatches
+
+```{r En3 mismatches}
+En3_Mismatch_DNA <- read_excel("~/Projects/Triplex_code/En3_Mismatch_DNA.xlsx", 
+                               col_types = c("text", "text", "numeric"))
+EMD_table <- 
+  En3_Mismatch_DNA %>%
+  arrange(as.numeric(`Kd[M]`)) %>%
+  mutate(Mismatch = factor(mismatch, levels=c("5A", "5G", "5T", 
+                                              "12A", "12G", "12T",
+                                              "19A", "19G", "19C",
+                                              "28A", "28G", "28T"))) %>%
+  group_by(Mismatch) %>%
+  summarise("Kd [nM]" = mean(as.numeric(`Kd[M]`)*1000000000), 
+            "SD [nM]" = sd(as.numeric(`Kd[M]`)*1000000000), 
+            "Replicates" = n())
+
+Mismatch_table <- formattable(EMD_table, 
+            align =c("c","c","c","c"), 
+            list(Mismatch = L_format, `Kd [nM]` = mean_format_2, `SD [nM]` = SD_format))
+Mismatch_table
+export_formattable(Mismatch_table,"Y_Mismatch_table.png",width = "30%")
+  
+YMD <- 
+  En3_Mismatch_DNA %>%
+  arrange(`Kd[M]`) %>%
+  mutate(name = factor(mismatch, levels=c("5A", "5G", "5T", 
+                                          "12A", "12G", "12T",
+                                          "19A", "19G", "19C",
+                                          "28A", "28G", "28T"))) %>%
+  ggplot(aes(x=name,y=`Kd[M]`,fill=mismatch)) + geom_boxplot(alpha=0.3) +
+  theme_classic() + scale_y_continuous(trans = 'log2',labels = scales::scientific) + 
+  ggtitle("Y DNA TFO - Mismatches") + ylab("Kd [M]") +  xlab("Mismatch") +
+  theme(text=element_text(color="black",size = 14),
+  axis.text=element_text(color="black",size = 14),
+  legend.text = element_text(color="black",size = 14)) +
+  geom_hline(yintercept=0.00005, linetype="dashed", color = "red") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face="bold")) + 
+  scale_fill_manual(values=c("#034523","#034523","#034523",
+                             "#4C2A85","#4C2A85","#4C2A85",
+                             "#6b7fd7","#6b7fd7","#6b7fd7",
+                             "#E364A6","#E364A6","#E364A6"))
+YMD
+ggsave("Y_Mismatch_DNA.png",plot=YMD,width = 8,height = 5)
+```
+
+```{r SELEX}
+SELEX_triplexes <- read_excel("~/Projects/Triplex_code/SELEX_top_hits.xlsx", 
+                                  col_types = c("text", "numeric", "text"))
+SELEX_table <- 
+  SELEX_triplexes %>%
+  group_by(`triplex name`) %>%
+  summarise("Kd [nM]" = mean(`Kd`*1000000000), "SD [nM]" = sd(`Kd`*1000000000), "Replicates" = n()) 
+
+uniq <- SELEX_triplexes %>%
+  select(`triplex name`, Sequence) %>%
+  distinct() 
+
+SELEX_table_full <- 
+  SELEX_table %>%
+  inner_join(uniq, by = c("triplex name" = "triplex name"))
+
+TSE_table <- formattable(SELEX_table_full, 
+            align =c("c","c","c"), 
+            list(`triplex name` = L_format, `Kd [nM]` = mean_format_2,
+                 `SD [nM]` =  SD_format))
+TSE_table
+export_formattable(TSE_table,"SELEX_triplexes_table.png",width = "60%")
+```
+
+
+```{r SAVE}
+save.image("~/Projects/Triplex_code/MST/TriplexData.RData")
+```
+
